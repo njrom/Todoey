@@ -8,8 +8,9 @@
 
 import UIKit
 import RealmSwift
+import ChameleonFramework
 
-class CategoryViewController: UITableViewController {
+class CategoryViewController: SwipeTableViewController {
     
     let realm = try! Realm()
     
@@ -19,21 +20,39 @@ class CategoryViewController: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        
         loadCategories()
     }
 
     //MARK: - TableView Datasource Methods
+    
+    //    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    //        let cell = tableView.dequeueReusableCell(withIdentifier: "Cell") as! SwipeTableViewCell
+    //        cell.delegate = self
+    //        return cell
+    //    }
+
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return categories?.count ?? 1 // Nil Coalescing Opperator
     }
     
+    
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-            let cell = tableView.dequeueReusableCell(withIdentifier: "CategoryCell", for: indexPath)
-            
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
+        cell.textLabel?.text = categories?[indexPath.row].name ?? "No Categories Added Yet"
         
-            cell.textLabel?.text = categories?[indexPath.row].name ?? "No Categories Added Yet"
-            
-            return cell
+        let category = categories?[indexPath.row]
+        
+        if let hex = category?.colorHex  {
+            guard let categoryColor = UIColor(hexString: hex) else {fatalError()}
+            cell.backgroundColor = categoryColor
+            cell.textLabel?.textColor = ContrastColorOf(categoryColor, returnFlat: true)
+        } else {
+            let color = UIColor.randomFlat
+            cell.backgroundColor = color
+            category?.colorHex = color.hexValue()
+        }
+        return cell
     }
     
     
@@ -47,7 +66,7 @@ class CategoryViewController: UITableViewController {
             //What will happen when the user clicks the add item button on alert
             
             let newCategory = Category()
-            
+            newCategory.colorHex = UIColor.randomFlat.hexValue()
             newCategory.name = textField.text!
             
             self.save(category: newCategory)
@@ -78,8 +97,21 @@ class CategoryViewController: UITableViewController {
         tableView.reloadData()
     }
     
+    override func updateModel(at indexPath: IndexPath) {
+        if let categoryToDelete = self.categories?[indexPath.row] {
+            do {
+                try self.realm.write {
+                    self.realm.delete(categoryToDelete)
+                }
+            } catch {
+                print("Error occured when trying to delete category \(error)")
+            }
+        }
+    }
 
     //MARK: - TableView Delegate Methods
+    
+
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         performSegue(withIdentifier: "goToItems", sender: self)
     }
@@ -91,5 +123,9 @@ class CategoryViewController: UITableViewController {
             destinationVC.selectedCategory = categories?[indexPath.row]
         }
     }
+    
+    
 
 }
+
+
